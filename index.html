@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DomoHub">
+<meta name="theme-color" content="#0F1115">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>DomoHub</title>
+<style>
+  :root {
+    --bg: #0F1115; --card: #1A1D23; --text: #E6EDF3; --muted: #9DA7B3; --hint: #7D8590;
+    --red: #DA3633; --green: #238636; --celeste: #0E5A7A; --gray: #30363D; --ok: #7EE787; --warn: #E3B341; --link: #58A6FF;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 32px); }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 0 8px; }
+  h1 { font-size: 24px; margin: 0; }
+  #conn { font-size: 13px; color: var(--muted); text-align: right; }
+  #conn.ok { color: var(--ok); } #conn.bad { color: var(--warn); }
+  nav { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0 12px; scrollbar-width: none; }
+  nav::-webkit-scrollbar { display: none; }
+  nav button { flex: none; border: 0; border-radius: 18px; padding: 8px 14px; background: var(--card); color: var(--muted); font-size: 15px; }
+  nav button.sel { background: var(--celeste); color: #fff; font-weight: 600; }
+  .section { color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: .04em; margin: 16px 4px 8px; }
+  .card { background: var(--card); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .grow { flex: 1; min-width: 0; }
+  .title { font-size: 18px; font-weight: 700; }
+  .big { font-size: 20px; font-weight: 700; }
+  .sub { font-size: 13px; color: var(--hint); white-space: pre-line; }
+  .muted { color: var(--muted); }
+  .btn { display: block; width: 100%; border: 0; border-radius: 10px; padding: 14px 12px; margin-top: 8px;
+    color: #fff; font-size: 16px; font-weight: 600; background: var(--gray); }
+  .btn:active { opacity: .7; }
+  .btn.red { background: var(--red); } .btn.green { background: var(--green); } .btn.cel { background: var(--celeste); }
+  .half { display: flex; gap: 8px; } .half .btn { flex: 1; }
+  .link { background: none; border: 0; color: var(--link); font-size: 15px; padding: 8px 0; }
+  .item { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .item + .item { border-top: 1px solid #262a31; }
+  /* Llave tipo iOS */
+  .sw { position: relative; width: 50px; height: 30px; flex: none; }
+  .sw input { opacity: 0; width: 0; height: 0; }
+  .sw span { position: absolute; inset: 0; background: #3a3f47; border-radius: 15px; transition: .2s; }
+  .sw span::before { content: ""; position: absolute; width: 26px; height: 26px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: .2s; }
+  .sw input:checked + span { background: var(--celeste); }
+  .sw input:checked + span::before { transform: translateX(20px); }
+  .on { color: var(--ok); } .alert { color: #FF7B72; } .warnc { color: var(--warn); }
+  #toast { position: fixed; left: 16px; right: 16px; bottom: calc(env(safe-area-inset-bottom) + 20px); background: #2d333b;
+    color: #fff; padding: 12px 14px; border-radius: 10px; opacity: 0; transition: opacity .3s; pointer-events: none; text-align: center; }
+  #toast.show { opacity: 1; }
+  textarea { width: 100%; min-height: 80px; background: #0d1117; color: var(--text); border: 1px solid var(--gray); border-radius: 8px; padding: 8px; font-size: 14px; }
+  dialog { background: var(--card); color: var(--text); border: 0; border-radius: 14px; padding: 16px; width: min(92vw, 380px); }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+</style>
+</head>
+<body>
+<header>
+  <h1>DomoHub</h1>
+  <div id="conn">Conectando…</div>
+</header>
+<nav id="tabs"></nav>
+<main id="main"></main>
+<div id="toast"></div>
+<dialog id="dlg"></dialog>
+
+<script>
+"use strict";
+const SERVER = "https://ntfy.sh";
+const TABS = ["Inicio", "Iluminación", "Riego", "Alarma", "Portón", "Estado"];
+const WHO = "iPhone";
+
+let KEY = null, CRYPTO = null, T_STATE = "", T_CMD = "";
+let view = null, tab = 0, es = null, lastMsg = 0, helloAt = 0;
+const seen = new Set(), parts = {};
+const clientId = Math.random().toString(36).slice(2, 12);
+
+// ---------------- utilidades ----------------
+const $ = (s) => document.querySelector(s);
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function toast(t) { const el = $("#toast"); el.textContent = t; el.classList.add("show"); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove("show"), 2500); }
+function clock(ms) { const d = new Date(ms); return d.toLocaleTimeString("es-UY", { hour: "2-digit", minute: "2-digit", hour12: false }); }
+function when(ms) { const d = new Date(ms); return d.toLocaleDateString("es-UY", { weekday: "short", day: "numeric", month: "numeric" }) + " " + clock(ms); }
+function ago(ms) { if (!ms) return ""; const m = Math.floor((Date.now() - ms) / 60000); return m < 1 ? "recién" : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.floor(m / 60)} h` : `hace ${Math.floor(m / 1440)} d`; }
+
+function b64urlDecode(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; const b = atob(s); return Uint8Array.from(b, c => c.charCodeAt(0)); }
+function b64urlEncode(bytes) { let s = ""; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+async function sha256(bytes) { return new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)); }
+async function streamBytes(bytes, stream) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer()); }
+
+async function topic(name) {
+  const h = await sha256(new Uint8Array([...KEY, ...new TextEncoder().encode(name)]));
+  return "dh" + [...h.slice(0, 12)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function decrypt(text) {
+  try {
+    const all = b64urlDecode(text);
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: all.slice(0, 12) }, CRYPTO, all.slice(12));
+    const raw = await streamBytes(new Uint8Array(plain), new DecompressionStream("gzip"));
+    return JSON.parse(new TextDecoder().decode(raw));
+  } catch (e) { return null; }
+}
+
+async function encrypt(obj) {
+  const gz = await streamBytes(new TextEncoder().encode(JSON.stringify(obj)), new CompressionStream("gzip"));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, CRYPTO, gz));
+  return b64urlEncode(new Uint8Array([...iv, ...ct]));
+}
+
+// ---------------- vinculación ----------------
+function readKeyFromUrl() {
+  const m = /[#&?]k=([A-Za-z0-9_-]{43})/.exec(location.href);
+  if (m) localStorage.setItem("dh_key", m[1]);
+  return localStorage.getItem("dh_key");
+}
+
+async function setup() {
+  const k = readKeyFromUrl();
+  if (!k) return showPairing();
+  KEY = b64urlDecode(k);
+  CRYPTO = await crypto.subtle.importKey("raw", KEY, "AES-GCM", false, ["encrypt", "decrypt"]);
+  T_STATE = await topic("state"); T_CMD = await topic("cmd");
+  try { view = JSON.parse(localStorage.getItem("dh_view") || "null"); } catch (e) { view = null; }
+  tab = +(localStorage.getItem("dh_tab") || 0);
+  render();
+  connect();
+}
+
+function showPairing() {
+  $("#tabs").innerHTML = "";
+  $("#conn").textContent = "";
+  $("#main").innerHTML = `
+    <div class="card">
+      <div class="title">Vincular con la casa</div>
+      <p class="muted">Escaneá con la cámara del iPhone el código QR que muestra la central (en la TV: DomoHub → Central y vinculación),
+      o pegá acá el enlace de vinculación que te mandaron.</p>
+      <textarea id="pair" placeholder="https://…#k=…"></textarea>
+      <button class="btn cel" id="pairBtn">Vincular</button>
+    </div>
+    <div class="card sub">Después de vincular: tocá <b>Compartir</b> → <b>Agregar a pantalla de inicio</b> para tenerla como app.</div>`;
+  $("#pairBtn").onclick = () => {
+    const m = /[#&?]k=([A-Za-z0-9_-]{43})/.exec($("#pair").value);
+    if (!m) return toast("Ese enlace no es de DomoHub");
+    localStorage.setItem("dh_key", m[1]);
+    location.hash = "k=" + m[1];
+    setup();
+  };
+}
+
+// ---------------- conexión ----------------
+function connect() {
+  if (es) es.close();
+  es = new EventSource(`${SERVER}/${T_STATE}/sse?since=15m`);
+  es.onmessage = (ev) => { try { const j = JSON.parse(ev.data); if (j.event === "message") handleRaw(j.message); } catch (e) {} };
+  es.onerror = () => { setConn(); };
+  hello();
+}
+
+async function handleRaw(body) {
+  let enc;
+  if (body.startsWith("DH1.")) enc = body.slice(4);
+  else if (body.startsWith("DH1c.")) {
+    const p = body.split(".");
+    if (p.length < 5) return;
+    const [, id, i, n] = p; const chunk = p.slice(4).join(".");
+    parts[id] = parts[id] || new Array(+n).fill(null);
+    parts[id][+i] = chunk;
+    if (parts[id].some(x => x === null)) return;
+    enc = parts[id].join(""); delete parts[id];
+  } else return;
+  const m = await decrypt(enc);
+  if (!m || m.from === clientId || seen.has(m.id)) return;
+  seen.add(m.id);
+  if (m.t === "view") {
+    if (view && view.ts > m.view.ts) return; // llegó uno viejo
+    view = m.view; lastMsg = Date.now();
+    localStorage.setItem("dh_view", JSON.stringify(view));
+    render();
+  }
+}
+
+async function send(op, data = {}) {
+  const msg = Object.assign({ t: "cmd", op, who: WHO, from: clientId, ts: Date.now(), id: Math.random().toString(36).slice(2, 12) }, data);
+  try {
+    await fetch(`${SERVER}/${T_CMD}`, { method: "POST", body: "DH1." + await encrypt(msg) });
+  } catch (e) { toast("Sin conexión"); }
+}
+
+function hello() { helloAt = Date.now(); send("hello", { full: false }); setTimeout(setConn, 12000); }
+
+function setConn() {
+  const el = $("#conn");
+  if (lastMsg && Date.now() - lastMsg < 5 * 60000) { el.textContent = "● Conectado"; el.className = "ok"; }
+  else if (helloAt && Date.now() - helloAt > 10000) { el.textContent = view ? `Sin respuesta · datos de las ${clock(view.ts)}` : "La central no responde"; el.className = "bad"; }
+  else { el.textContent = "Conectando…"; el.className = ""; }
+}
+
+document.addEventListener("visibilitychange", () => { if (!document.hidden && KEY) connect(); });
+setInterval(() => { if (!document.hidden && KEY) { send("ping"); setConn(); } }, 4 * 60000);
+
+// ---------------- acciones (con actualización optimista) ----------------
+function setState(key, v) { if (!view) return; view.states[key] = Object.assign({}, view.states[key] || {}, { v, t: Date.now() }); }
+function sw(ref, on, min = 0) { send("switch", { ref, on, min }); setState(ref, on ? "on" : "off"); render(); toast((on ? "Prendiendo " : "Apagando ") + (view.switches[ref] || "")); }
+function grp(g, on, min = 0) { send("group", { gid: g.id, on, min }); g.refs.forEach(r => setState(r, on ? "on" : "off")); render(); toast((on ? "Prendiendo " : "Apagando ") + g.name + (min ? ` (${min} min)` : "")); }
+function scenario(id, on) {
+  send("scenario", { sid: id, on });
+  view.active = on ? [...new Set([...view.active, id])] : view.active.filter(x => x !== id); render();
+}
+function runRoutine(r) {
+  send("run", { aid: r.id });
+  if (r.skip) { view.skip = true; render(); toast("Se va a saltar el próximo riego"); } else toast("Ejecutando " + r.name);
+}
+function activeRoutine(r, on) { send("active", { aid: r.id, on }); r.active = on; render(); }
+function pref(key, value) { send("pref", { key, value }); }
+
+function confirmDo(text, ok, fn) {
+  const d = $("#dlg");
+  d.innerHTML = `<p style="margin-top:0">${esc(text)}</p><div class="half"><button class="btn" id="dNo">Cancelar</button><button class="btn cel" id="dYes">${esc(ok)}</button></div>`;
+  $("#dNo").onclick = () => d.close();
+  $("#dYes").onclick = () => { d.close(); fn(); };
+  d.showModal();
+}
+
+function pickMinutes(title, fn) {
+  const opts = [5, 10, 15, 20, 30, 45, 60];
+  const d = $("#dlg");
+  d.innerHTML = `<div class="title" style="margin-bottom:8px">${esc(title)}</div>` +
+    opts.map(m => `<button class="btn" data-m="${m}">${m} minutos</button>`).join("") +
+    `<button class="link" id="dNo">Cancelar</button>`;
+  d.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { d.close(); fn(+b.dataset.m); });
+  $("#dNo").onclick = () => d.close();
+  d.showModal();
+}
+
+// ---------------- pantalla ----------------
+function render() {
+  $("#tabs").innerHTML = TABS.map((t, i) => `<button class="${i === tab ? "sel" : ""}" data-t="${i}">${t}</button>`).join("");
+  document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => { tab = +b.dataset.t; localStorage.setItem("dh_tab", tab); render(); });
+  setConn();
+  const main = $("#main");
+  if (!view) { main.innerHTML = `<div class="card muted">Esperando datos de la central…</div>`; return; }
+  main.innerHTML = "";
+  [home, lights, irrigation, alarm, gate, status][tab](main);
+}
+
+function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstChild; }
+function add(parent, html) { const e = el(html); parent.appendChild(e); return e; }
+function section(parent, t) { add(parent, `<div class="section">${esc(t)}</div>`); }
+function toggle(checked, onchange) {
+  const lab = el(`<label class="sw"><input type="checkbox" ${checked ? "checked" : ""}><span></span></label>`);
+  lab.querySelector("input").onchange = (e) => onchange(e.target.checked);
+  return lab;
+}
+function stateOf(key) { return (view.states[key] || {}).v; }
+
+function sensorLabel(type, v) {
+  if (!v) return "—";
+  if (/Door/i.test(type) && v === "open") return "🟠 Abierto";
+  if (/Door/i.test(type) && v === "closed") return "🟢 Cerrado";
+  if (/Motion/i.test(type) && v === "alert") return "🟠 Movimiento";
+  if (/Leak/i.test(type) && v === "alert") return "🔴 Agua";
+  if (v === "alert") return "🟠 Alerta";
+  if (v === "normal") return "🟢 Normal";
+  return v;
+}
+
+function switchRow(parent, ref, extra) {
+  const v = stateOf(ref);
+  const row = add(parent, `<div class="item"><div class="grow"><div>${esc(view.switches[ref] || "(borrado)")}</div>
+    <div class="sub ${v === "on" ? "on" : ""}">${v === "on" ? "Prendido" : v === "off" ? "Apagado" : "Estado desconocido"}</div></div></div>`);
+  if (extra) row.appendChild(extra);
+  row.appendChild(toggle(v === "on", (on) => sw(ref, on)));
+}
+
+function home(main) {
+  const s = add(main, `<div></div>`);
+  if (view.siren) {
+    add(s, `<button class="btn red">🚨 Encender sirena</button>`).onclick = () => confirmDo("¿Hacer sonar la sirena ahora?", "Encender", () => { send("siren", { on: true }); toast("Encendiendo sirena…"); });
+    add(s, `<button class="btn green">🔕 Apagar sirena</button>`).onclick = () => { send("siren", { on: false }); toast("Apagando sirena…"); };
+  }
+  section(main, "ESCENARIOS");
+  for (const sc of view.scenarios) {
+    const on = view.active.includes(sc.id);
+    const c = add(main, `<div class="card"><div class="big">${esc(sc.name)}</div>
+      <div class="${on ? "alert" : "muted"}">${on ? "🔒 ACTIVADO" : "Desactivado"}</div></div>`);
+    add(c, `<button class="btn ${on ? "" : "cel"}">${on ? "Desactivar" : "Activar"}</button>`).onclick = () => scenario(sc.id, !on);
+  }
+}
+
+function groupCards(main, kind) {
+  const groups = view.groups.filter(g => g.kind === kind);
+  if (!groups.length) add(main, `<div class="sub">No hay grupos (se crean desde el Android).</div>`);
+  for (const g of groups) {
+    const onCount = g.refs.filter(r => stateOf(r) === "on").length;
+    const c = add(main, `<div class="card"><div class="title">${esc(g.name)}</div>
+      <div class="sub ${onCount ? "on" : ""}">${g.refs.length} equipos · ${onCount} prendidos</div>
+      <div class="half"><button class="btn cel">Prender</button><button class="btn">Apagar</button></div></div>`);
+    const [bOn, bOff] = c.querySelectorAll(".half .btn");
+    bOn.onclick = () => grp(g, true); bOff.onclick = () => grp(g, false);
+    if (kind === "irrigation") add(c, `<button class="link">Regar todo el grupo por un rato…</button>`).onclick = () => pickMinutes("Regar " + g.name, m => grp(g, true, m));
+    for (const ref of g.refs) {
+      let extra = null;
+      if (kind === "irrigation") { extra = el(`<button class="link">Regar…</button>`); extra.onclick = () => pickMinutes("Regar " + (view.switches[ref] || ""), m => sw(ref, true, m)); }
+      switchRow(c, ref, extra);
+    }
+  }
+}
+
+function routines(main, cat) {
+  const list = view.routines.filter(r => r.cat === cat);
+  if (!list.length) add(main, `<div class="sub">No hay rutinas en esta pestaña.</div>`);
+  for (const r of list) {
+    const info = [];
+    if (!r.manual) info.push("⚡ " + r.trig);
+    info.push("▶ " + r.acts);
+    if (r.active && r.next) info.push("⏰ Próxima: " + when(r.next));
+    const c = add(main, `<div class="card"><div class="row"><div class="grow"><div class="title" style="font-size:16px">${esc(r.name)}</div>
+      <div class="sub">${esc(info.join("\n"))}</div></div></div></div>`);
+    if (!r.manual) c.querySelector(".row").appendChild(toggle(r.active, on => activeRoutine(r, on)));
+    if (r.skip && view.skip) {
+      add(c, `<div class="warnc" style="margin-top:8px">⏭️ El próximo riego se va a saltar</div>`);
+      add(c, `<button class="btn">Cancelar el salto</button>`).onclick = () => { send("skip", { on: false }); view.skip = false; render(); };
+    } else {
+      add(c, `<button class="btn cel">${r.skip ? "⏭️ " + esc(r.name) : "▶ Ejecutar"}</button>`).onclick = () => runRoutine(r);
+    }
+  }
+}
+
+function lights(main) {
+  section(main, "GRUPOS DE LUCES"); groupCards(main, "light");
+  section(main, "RUTINAS"); routines(main, "light");
+  section(main, "SIMULACIÓN DE PRESENCIA");
+  const c = add(main, `<div class="card"><div class="row"><div class="grow">Simular que hay alguien en casa</div></div>
+    <div class="sub" style="margin-top:6px">${esc(view.sim.status)}</div></div>`);
+  c.querySelector(".row").appendChild(toggle(view.sim.on, on => { pref("sim_on", on); view.sim.on = on; render(); }));
+}
+
+function irrigation(main) {
+  const c = add(main, `<div class="card"><div class="title">Próximo riego</div></div>`);
+  const n = view.nextIrrigation || {};
+  add(c, n.at ? `<div>${esc(n.name)}: ${esc(when(n.at))}</div>` : `<div class="sub">No hay riegos programados.</div>`);
+  if (view.skip) add(c, `<div class="warnc">⏭️ Se va a saltar</div>`);
+  section(main, "GRUPOS DE REGADORES"); groupCards(main, "irrigation");
+  section(main, "RUTINAS"); routines(main, "irrigation");
+}
+
+function sensorsList(main) {
+  const list = view.sensors.filter(s => !/Siren/i.test(s.type));
+  if (!list.length) add(main, `<div class="sub">No hay sensores.</div>`);
+  for (const s of list) {
+    const st = view.states["yolink|" + s.id] || {};
+    add(main, `<div class="card"><div class="row"><div class="grow"><b>${esc(s.name)}</b><div class="sub">${esc([st.x, ago(st.t)].filter(Boolean).join(" · "))}</div></div>
+      <div>${sensorLabel(s.type, st.v)}</div></div></div>`);
+  }
+}
+
+function alarm(main) {
+  const a = view.alarm;
+  const c = add(main, `<div class="card"><div class="title">Activación automática</div></div>`);
+  const r1 = add(c, `<div class="item"><div class="grow">Activar ${esc(a.name)} cuando se va el celular de Sebastián</div></div>`);
+  r1.appendChild(toggle(a.arm, on => { pref("alarm_auto_arm", on); a.arm = on; }));
+  const r2 = add(c, `<div class="item"><div class="grow">Desactivarla cuando llega</div></div>`);
+  r2.appendChild(toggle(a.disarm, on => { pref("alarm_auto_disarm", on); a.disarm = on; }));
+  section(main, "RUTINAS"); routines(main, "alarm");
+  section(main, "SENSORES"); sensorsList(main);
+}
+
+function gate(main) {
+  const g = view.gate;
+  const c = add(main, `<div class="card"><div class="title">Portón</div></div>`);
+  if (!g.ref) { add(c, `<div class="sub">El portón todavía no está configurado.</div>`); }
+  else {
+    let st = "Sin sensor de estado";
+    if (g.sensor) { const v = stateOf("yolink|" + g.sensor); st = v === "open" ? "🟠 Abierto" : v === "closed" ? "🟢 Cerrado" : "Estado desconocido"; }
+    else if (g.mode === "onoff") { const v = stateOf(g.ref); st = v === "on" ? "🟠 Abierto" : v === "off" ? "🟢 Cerrado" : "Estado desconocido"; }
+    add(c, `<div class="big">${st}</div>`);
+    if (g.mode === "onoff") {
+      add(c, `<button class="btn cel">Abrir portón</button>`).onclick = () => confirmDo("¿Abrir el portón?", "Abrir", () => sw(g.ref, true));
+      add(c, `<button class="btn">Cerrar portón</button>`).onclick = () => confirmDo("¿Cerrar el portón?", "Cerrar", () => sw(g.ref, false));
+    } else {
+      add(c, `<button class="btn cel">Abrir / Cerrar portón</button>`).onclick = () => confirmDo("¿Accionar el portón?", "Sí", () => { send("pulse", { ref: g.ref }); toast("Accionando portón…"); });
+    }
+  }
+  section(main, "RUTINAS"); routines(main, "gate");
+}
+
+function status(main) {
+  add(main, `<button class="btn">Actualizar interruptores</button>`).onclick = () => { send("refresh"); toast("Pidiendo estados…"); };
+  section(main, "SENSORES"); sensorsList(main);
+  section(main, "INTERRUPTORES");
+  const c = add(main, `<div class="card"></div>`);
+  const refs = Object.keys(view.switches);
+  if (!refs.length) add(c, `<div class="sub">No hay interruptores.</div>`);
+  refs.sort((a, b) => view.switches[a].localeCompare(view.switches[b])).forEach(r => switchRow(c, r));
+}
+
+setup();
+</script>
+</body>
+</html>
