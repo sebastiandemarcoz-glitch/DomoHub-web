@@ -319,8 +319,8 @@ function routines(main, cat) {
   if (!list.length) add(main, `<div class="sub">No hay rutinas en esta pestaña.</div>`);
   for (const r of list) {
     const info = [];
-    if (!r.manual) info.push("⚡ " + r.trig);
-    info.push("▶ " + r.acts);
+    if (r.desc) info.push(r.desc);
+    else { if (!r.manual) info.push("⚡ " + r.trig); info.push("▶ " + r.acts); }
     if (r.active && r.next) info.push("⏰ Próxima: " + when(r.next));
     const c = add(main, `<div class="card"><div class="row"><div class="grow"><div class="title" style="font-size:16px">${esc(r.name)}</div>
       <div class="sub">${esc(info.join("\n"))}</div></div></div></div>`);
