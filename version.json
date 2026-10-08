@@ -1,6 +1,6 @@
 {
-  "versionCode": 15,
-  "versionName": "0.1.15",
+  "versionCode": 16,
+  "versionName": "0.1.16",
   "apk": "DomoHub.apk",
-  "notes": "Actualizaciones desde la app y resumen de automatizaciones."
+  "notes": "Automatizaciones con varios disparadores (O / Y) y condiciones de estado."
 }
