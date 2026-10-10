@@ -1,6 +1,6 @@
 {
-  "versionCode": 17,
-  "versionName": "0.1.17",
+  "versionCode": 18,
+  "versionName": "0.1.18",
   "apk": "DomoHub.apk",
-  "notes": "Portón por la app G.Smart: DomoHub aprende el botón y lo toca solo (Accesibilidad)."
+  "notes": "Portón sin confirmación; mientras toca G.Smart se muestra un cartel encima y después vuelve a lo que estabas viendo."
 }
