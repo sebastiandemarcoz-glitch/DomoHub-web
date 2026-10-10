@@ -378,15 +378,15 @@ function gate(main) {
   const c = add(main, `<div class="card"><div class="title">Portón</div></div>`);
   if (!g.ref) { add(c, `<div class="sub">El portón todavía no está configurado.</div>`); }
   else {
-    let st = "Sin sensor de estado";
+    let st = "";
     if (g.sensor) { const v = stateOf("yolink|" + g.sensor); st = v === "open" ? "🟠 Abierto" : v === "closed" ? "🟢 Cerrado" : "Estado desconocido"; }
     else if (g.mode === "onoff") { const v = stateOf(g.ref); st = v === "on" ? "🟠 Abierto" : v === "off" ? "🟢 Cerrado" : "Estado desconocido"; }
-    add(c, `<div class="big">${st}</div>`);
+    if (st) add(c, `<div class="big">${st}</div>`);
     if (g.mode === "onoff") {
-      add(c, `<button class="btn cel">Abrir portón</button>`).onclick = () => confirmDo("¿Abrir el portón?", "Abrir", () => sw(g.ref, true));
-      add(c, `<button class="btn">Cerrar portón</button>`).onclick = () => confirmDo("¿Cerrar el portón?", "Cerrar", () => sw(g.ref, false));
+      add(c, `<button class="btn cel">Abrir portón</button>`).onclick = () => sw(g.ref, true);
+      add(c, `<button class="btn">Cerrar portón</button>`).onclick = () => sw(g.ref, false);
     } else {
-      add(c, `<button class="btn cel">Abrir / Cerrar portón</button>`).onclick = () => confirmDo("¿Accionar el portón?", "Sí", () => { send("pulse", { ref: g.ref }); toast("Accionando portón…"); });
+      add(c, `<button class="btn cel">Abrir / Cerrar portón</button>`).onclick = () => { send("pulse", { ref: g.ref }); toast("Accionando portón…"); };
     }
   }
   section(main, "RUTINAS"); routines(main, "gate");
