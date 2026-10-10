@@ -1,6 +1,6 @@
 {
-  "versionCode": 16,
-  "versionName": "0.1.16",
+  "versionCode": 17,
+  "versionName": "0.1.17",
   "apk": "DomoHub.apk",
-  "notes": "Automatizaciones con varios disparadores (O / Y) y condiciones de estado."
+  "notes": "Portón por la app G.Smart: DomoHub aprende el botón y lo toca solo (Accesibilidad)."
 }
