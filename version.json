@@ -1,6 +1,6 @@
 {
-  "versionCode": 18,
-  "versionName": "0.1.18",
+  "versionCode": 19,
+  "versionName": "0.1.19",
   "apk": "DomoHub.apk",
-  "notes": "Portón sin confirmación; mientras toca G.Smart se muestra un cartel encima y después vuelve a lo que estabas viendo."
+  "notes": "Nombres propios para los interruptores; la simulación de presencia elige grupos de luces; portón sin textos de más."
 }
