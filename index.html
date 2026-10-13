@@ -365,12 +365,43 @@ function sensorsList(main) {
 function alarm(main) {
   const a = view.alarm;
   const c = add(main, `<div class="card"><div class="title">Activación automática</div></div>`);
-  const r1 = add(c, `<div class="item"><div class="grow">Activar ${esc(a.name)} cuando se va el celular de Sebastián</div></div>`);
+  const p = view.people || { me: "Seba", p2: "Euge", track: false };
+  const icon = b => b === true ? "🏠" : b === false ? "🚗" : "❔";
+  add(c, `<div class="big" style="font-size:18px">${icon(p.meHome)} ${esc(p.me)}${p.track ? `&nbsp;&nbsp;·&nbsp;&nbsp;${icon(p.p2Home)} ${esc(p.p2)}` : ""}</div>`);
+  const r1 = add(c, `<div class="item"><div class="grow">Activar ${esc(a.name)} cuando nos vamos todos</div></div>`);
   r1.appendChild(toggle(a.arm, on => { pref("alarm_auto_arm", on); a.arm = on; }));
-  const r2 = add(c, `<div class="item"><div class="grow">Desactivarla cuando llega</div></div>`);
+  const r2 = add(c, `<div class="item"><div class="grow">Desactivarla cuando llega alguno</div></div>`);
   r2.appendChild(toggle(a.disarm, on => { pref("alarm_auto_disarm", on); a.disarm = on; }));
+  const r3 = add(c, `<div class="item"><div class="grow">Tener en cuenta a ${esc(p.p2)} (este iPhone)</div></div>`);
+  r3.appendChild(toggle(p.track, on => { pref("p2_track", on); p.track = on; render(); }));
+  add(c, `<button class="btn">📍 Configurar este iPhone</button>`).onclick = () => iphoneSetup(p.p2);
   section(main, "RUTINAS"); routines(main, "alarm");
   section(main, "SENSORES"); sensorsList(main);
+}
+
+async function iphoneSetup(name) {
+  const t = await topic("pres");
+  const base = "https://ntfy.sh/" + t + "/publish?message=";
+  const arrive = base + "llego", leave = base + "salio";
+  const ov = document.createElement("div");
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:50;overflow:auto;padding:16px";
+  ov.innerHTML = `<div class="card" style="max-width:520px;margin:20px auto">
+    <div class="title">Avisar cuando ${esc(name)} llega o se va</div>
+    <div class="sub" style="line-height:1.5">En este iPhone, abrí la app <b>Atajos</b> → pestaña <b>Automatización</b> → <b>Nueva automatización</b>:<br><br>
+    <b>1. Al llegar</b><br>• Elegí <b>“Llegar”</b> → Ubicación: la casa → Listo.<br>• Marcá <b>“Ejecutar inmediatamente”</b> y apagá “Notificar al ejecutarse”.<br>
+    • Siguiente → <b>Nuevo atajo en blanco</b> → agregar acción <b>“Obtener contenido de URL”</b> y pegá la dirección de LLEGADA.<br><br>
+    <b>2. Al salir</b><br>• Otra automatización igual pero con <b>“Salir”</b>, y la dirección de SALIDA.<br><br>
+    Estas direcciones son como una llave de la alarma: no las compartas.</div>
+    <div class="sub" style="margin-top:12px"><b>Dirección de LLEGADA</b></div><div class="sub" style="word-break:break-all;font-size:12px">${esc(arrive)}</div>
+    <button class="btn cel" id="cpA">Copiar dirección de LLEGADA</button>
+    <div class="sub" style="margin-top:12px"><b>Dirección de SALIDA</b></div><div class="sub" style="word-break:break-all;font-size:12px">${esc(leave)}</div>
+    <button class="btn cel" id="cpS">Copiar dirección de SALIDA</button>
+    <button class="btn" id="cpX" style="margin-top:14px">Cerrar</button></div>`;
+  document.body.appendChild(ov);
+  const copy = async u => { try { await navigator.clipboard.writeText(u); toast("Copiada"); } catch (e) { prompt("Copiá la dirección:", u); } };
+  ov.querySelector("#cpA").onclick = () => copy(arrive);
+  ov.querySelector("#cpS").onclick = () => copy(leave);
+  ov.querySelector("#cpX").onclick = () => ov.remove();
 }
 
 function gate(main) {
