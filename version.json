@@ -1,6 +1,6 @@
 {
-  "versionCode": 21,
-  "versionName": "0.1.21",
+  "versionCode": 22,
+  "versionName": "0.1.22",
   "apk": "DomoHub.apk",
-  "notes": "Mensajes de audio grabados con tu voz, que suenan en la central como acción de una automatización. Condición con varios escenarios."
+  "notes": "Alarma por presencia de los dos: Seba (GPS) y Euge (Atajos del iPhone)."
 }
