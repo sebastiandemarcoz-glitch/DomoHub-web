@@ -1,6 +1,6 @@
 {
-  "versionCode": 22,
-  "versionName": "0.1.22",
+  "versionCode": 23,
+  "versionName": "0.1.23",
   "apk": "DomoHub.apk",
-  "notes": "Alarma por presencia de los dos: Seba (GPS) y Euge (Atajos del iPhone)."
+  "notes": "Corrige la ubicación de Seba: el aviso de salida no llegaba a la central con la app cerrada. Ahora además se verifica cada 15 minutos."
 }
