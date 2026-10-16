@@ -1,6 +1,6 @@
 {
-  "versionCode": 23,
-  "versionName": "0.1.23",
+  "versionCode": 24,
+  "versionName": "0.1.24",
   "apk": "DomoHub.apk",
-  "notes": "Corrige la ubicación de Seba: el aviso de salida no llegaba a la central con la app cerrada. Ahora además se verifica cada 15 minutos."
+  "notes": "La ubicación de Seba ahora se sigue siempre en el celular (antes solo con la alarma automática). Nuevo: Pruebas → Verificar mi ubicación ahora."
 }
