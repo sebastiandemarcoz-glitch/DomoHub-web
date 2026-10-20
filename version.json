@@ -1,6 +1,6 @@
 {
-  "versionCode": 24,
-  "versionName": "0.1.24",
+  "versionCode": 25,
+  "versionName": "0.1.25",
   "apk": "DomoHub.apk",
-  "notes": "La ubicación de Seba ahora se sigue siempre en el celular (antes solo con la alarma automática). Nuevo: Pruebas → Verificar mi ubicación ahora."
+  "notes": "Ubicación de Seba más confiable fuera de casa (usa también lecturas imprecisas cuando estás lejos). Alarma muestra la última verificación."
 }
