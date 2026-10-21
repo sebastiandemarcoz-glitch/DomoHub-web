@@ -1,6 +1,6 @@
 {
-  "versionCode": 25,
-  "versionName": "0.1.25",
+  "versionCode": 26,
+  "versionName": "0.1.26",
   "apk": "DomoHub.apk",
-  "notes": "Ubicación de Seba más confiable fuera de casa (usa también lecturas imprecisas cuando estás lejos). Alarma muestra la última verificación."
+  "notes": "Importante para la Shield: la central ya no revisa su propia ubicación (hacía que la alarma se activara y desactivara sola)."
 }
