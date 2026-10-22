@@ -1,6 +1,6 @@
 {
-  "versionCode": 26,
-  "versionName": "0.1.26",
+  "versionCode": 27,
+  "versionName": "0.1.27",
   "apk": "DomoHub.apk",
-  "notes": "Importante para la Shield: la central ya no revisa su propia ubicación (hacía que la alarma se activara y desactivara sola)."
+  "notes": "Los interruptores de alarma automática del celular se mandan directo a la central. Para la Shield: ya no revisa su propia ubicación."
 }
